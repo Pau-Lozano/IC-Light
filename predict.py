@@ -157,6 +157,7 @@ def run_rmbg(img, sigma=0.0):
 @torch.inference_mode()
 def process(
     input_fg,
+    input_bg,
     prompt,
     image_width,
     image_height,
@@ -172,7 +173,6 @@ def process(
     bg_source,
 ):
     bg_source = BGSource(bg_source)
-    input_bg = None
 
     if bg_source == BGSource.NONE:
         pass
@@ -295,6 +295,7 @@ def process(
 @torch.inference_mode()
 def process_relight(
     input_fg,
+    input_bg,
     prompt,
     image_width,
     image_height,
@@ -312,6 +313,7 @@ def process_relight(
     input_fg, matting = run_rmbg(input_fg)
     results = process(
         input_fg,
+        input_bg,
         prompt,
         image_width,
         image_height,
@@ -541,6 +543,9 @@ class Predictor(BasePredictor):
         subject_image: Path = Input(
             description="The main foreground image to be relighted"
         ),
+        background_image: Path = Input(
+            description="The background image to be relighted"
+        ),
         prompt: str = Input(
             description="A text description guiding the relighting and generation process"
         ),
@@ -624,6 +629,7 @@ class Predictor(BasePredictor):
         print(f"Using seed: {seed}")
 
         input_fg = subject_image
+        image_bg = background_image
         image_width = width
         image_height = height
         num_samples = number_of_images
@@ -646,10 +652,12 @@ class Predictor(BasePredictor):
         print(f"[!] ({type(lowres_denoise)}) lowres_denoise={lowres_denoise}")
         print(f"[!] ({type(bg_source)}) bg_source={bg_source}")
         input_fg_np = np.array(Image.open(str(input_fg))) if input_fg else None
+        input_bg_np = np.array(Image.open(str(image_bg))) if image_bg else None
 
         with torch.inference_mode():
             output_bg, result_gallery = process_relight(
                 input_fg_np,
+                input_bg_np,
                 prompt,
                 image_width,
                 image_height,
